@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import socket from "@/utils/socket"; // Burada socket.ts dosyasını kullanıyoruz
+import socket from "@/utils/socket";
 
 interface OfferData {
   offer: RTCSessionDescriptionInit;
@@ -26,7 +26,6 @@ export default function VideoChat() {
   const peerConnection = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    // Olay dinleyicileri
     socket.on("receive-offer", async (data: OfferData) => {
       if (!peerConnection.current) return;
 
@@ -55,13 +54,12 @@ export default function VideoChat() {
       );
     });
 
-    // Cleanup
     return () => {
       socket.off("receive-offer");
       socket.off("receive-answer");
       socket.off("receive-ice-candidate");
     };
-  }, []);
+  }, [roomId]);
 
   const startCall = async () => {
     if (!roomId.trim()) return;
@@ -120,7 +118,10 @@ export default function VideoChat() {
           />
           <button
             onClick={startCall}
-            className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700"
+            className={`w-full p-2 rounded-md text-white ${
+              roomId.trim() ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
+            }`}
+            disabled={!roomId.trim()}
           >
             Join Room
           </button>
