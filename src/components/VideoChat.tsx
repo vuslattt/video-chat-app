@@ -1,7 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import socket from "@/utils/socket";
+import socket from "@/utils/socket"; // Burada socket.ts dosyasını kullanıyoruz
+
+interface OfferData {
+  offer: RTCSessionDescriptionInit;
+  sender: string;
+}
+
+interface AnswerData {
+  answer: RTCSessionDescriptionInit;
+  sender: string;
+}
+
+interface IceCandidateData {
+  candidate: RTCIceCandidateInit;
+  sender: string;
+}
 
 export default function VideoChat() {
   const [roomId, setRoomId] = useState("");
@@ -11,26 +26,36 @@ export default function VideoChat() {
   const peerConnection = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    socket.on("receive-offer", async (data) => {
+    // Olay dinleyicileri
+    socket.on("receive-offer", async (data: OfferData) => {
       if (!peerConnection.current) return;
 
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(data.offer)
+      );
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
 
-      socket.emit("answer", { roomId: data.roomId, answer });
+      socket.emit("answer", { roomId, answer });
     });
 
-    socket.on("receive-answer", async (data) => {
+    socket.on("receive-answer", async (data: AnswerData) => {
       if (!peerConnection.current) return;
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(data.answer)
+      );
     });
 
-    socket.on("receive-ice-candidate", async (data) => {
+    socket.on("receive-ice-candidate", async (data: IceCandidateData) => {
       if (!peerConnection.current) return;
-      await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+
+      await peerConnection.current.addIceCandidate(
+        new RTCIceCandidate(data.candidate)
+      );
     });
 
+    // Cleanup
     return () => {
       socket.off("receive-offer");
       socket.off("receive-answer");
@@ -40,7 +65,7 @@ export default function VideoChat() {
 
   const startCall = async () => {
     if (!roomId.trim()) return;
-    
+
     socket.emit("join-room", roomId);
     setJoined(true);
 
@@ -60,21 +85,24 @@ export default function VideoChat() {
       }
     };
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
 
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = stream;
     }
 
     stream.getTracks().forEach((track) => {
-      if (peerConnection.current && stream) {
+      if (peerConnection.current) {
         peerConnection.current.addTrack(track, stream);
       }
     });
 
     const offer = await peerConnection.current.createOffer();
     await peerConnection.current.setLocalDescription(offer);
-    
+
     socket.emit("offer", { roomId, offer });
   };
 
@@ -101,8 +129,19 @@ export default function VideoChat() {
         <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-2xl flex flex-col items-center">
           <h2 className="text-xl font-bold mb-4">Room: {roomId}</h2>
           <div className="w-full flex gap-4">
-            <video ref={localVideoRef} autoPlay playsInline muted className="w-1/2 rounded-md border" />
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-1/2 rounded-md border" />
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-1/2 rounded-md border"
+            />
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-1/2 rounded-md border"
+            />
           </div>
           <button
             onClick={() => setJoined(false)}
